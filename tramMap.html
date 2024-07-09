@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Leaflet Time Slider Example</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/nouislider@latest/distribute/nouislider.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/nouislider@latest/distribute/nouislider.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            overflow: hidden; /* Prevent scrolling */
+        }
+        #map-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        #time-slider {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            z-index: 1000; /* Ensure the slider is above the map */
+        }
+        .noUi-base,
+        .noUi-connect,
+        .noUi-origin,
+        .noUi-handle {
+            background: rgb(205, 115, 115); 
+            border-color: rgb(0, 0, 0); 
+        }
+        .noUi-tooltip {
+            font-size: 12px;
+            text-align: center;
+            padding: 5px;
+            background: rgba(51, 51, 51, 0.8); /* Slightly opaque tooltip background */
+            color: #fff;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map-container">
+        <div id="map"></div>
+        <div id="time-slider"></div>
+    </div>
+
+    <script>
+        // Initialize the map
+        var map = L.map('map').setView([50.01655, 8.25289], 13);
+        L.tileLayer('https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+            maxZoom: 16
+        }).addTo(map);
+
+        var tramIcon = L.icon({
+            iconUrl: 'LeafletTramIcon.jpg',
+            iconSize: [25,25],
+        })
+        // Year-specific datasets
+        var data1904 = {
+            markers: [
+                { coords: [50.01243, 8.24884], description: "Bismarckplatz", icon: tramIcon },
+                { coords: [50.01655, 8.25289], description: "Rheintor" },
+                { coords: [50.00923, 8.26824], description: "Kaisertor" },
+                { coords: [50.005211, 8.266412], description: "Bauhofstrasse" },
+                { coords: [49.99934, 8.27222], description: "Höfchen" },
+                { coords: [49.99390, 8.27981], description: "Neutor" },
+                { coords: [49.99064, 8.28941], description: "Stadtpark" },
+                { coords: [49.98826, 8.29512], description: "Weisenau" },
+                { coords: [50.001297, 8.25865], description: "Hauptbahnhof" },
+                { coords: [50.0218, 8.2286], description: "Mombach" },
+                { coords: [50.00656, 8.25500], description: "Boppstrasse" },
+                { coords: [50.0035, 8.2623], description: "Kaiserstrasse" },
+                { coords: [50.0444,8.2491], description: "Biebrich" },
+                { coords: [50.0340,8.2607 ], description: "Amöneburg" },
+                { coords: [50.0082, 8.2803], description: "Gabelung" },
+                { coords: [50.0053, 8.2735], description: "Brückenkopf" },
+                { coords: [50.0036, 8.2739], description: "Mainz / Brückenplatz" }
+            ],
+            lines: [
+                { coords: [[50.01243, 8.24884], [50.01655, 8.25289], [50.00923, 8.26824], [50.005211, 8.266412], [49.99934, 8.27222], [49.99390, 8.27981], [49.99064, 8.28941], [49.98826, 8.29512]], color: 'red', description: 'Linie 1' }, // Rote Linie 1
+                { coords: [[50.001297, 8.25865], [49.99934, 8.27222], [49.99944, 8.27678], [50.0053, 8.2735], [50.00923, 8.26824], [50.0035, 8.2623], [50.001297, 8.25865]], color: 'blue', description: 'Linie 3' }, // Blaue Linie 3
+                { coords: [[50.0218, 8.2286], [50.01243, 8.24884], [50.00656, 8.25500], [50.0035, 8.2623], [50.001297, 8.25865]], color: 'green', description:'Linie 7' }, // Grüne Linie 7
+                { coords: [[50.0444,8.2491], [50.0340,8.2607 ], [50.0082, 8.2803], [50.0053, 8.2735], [50.0036, 8.2739]], color: 'yellow', description:'Linie 9' } // Weiße/Gelbe Linie 9
+            ]
+        }
+        var data1905 = {
+            markers: [
+                { coords: [50.01243, 8.24884], description: "Bismarckplatz"},
+                { coords: [50.01655, 8.25289], description: "Rheintor" },
+                { coords: [50.00923, 8.26824], description: "Kaisertor" },
+                { coords: [50.005211, 8.266412], description: "Bauhofstrasse" },
+                { coords: [49.99934, 8.27222], description: "Höfchen" },
+                { coords: [49.99390, 8.27981], description: "Neutor" },
+                { coords: [49.99064, 8.28941], description: "Stadtpark" },
+                { coords: [49.98826, 8.29512], description: "Weisenau" },
+                { coords: [50.001297, 8.25865], description: "Hauptbahnhof" },
+                { coords: [50.0053, 8.2735], description: "Brückenkopf" },
+                { coords: [50.0082,8.2803], description: "Kastel" }, 
+                { coords: [50.0471,8.1951], description: "Schierstein"},
+                { coords: [50.0218, 8.2286], description: "Mombach" },
+                { coords: [50.00656, 8.25500], description: "Boppstrasse" }, 
+                { coords: [50.0444,8.2491], description: "Biebrich" },
+                { coords: [50.0340,8.2607 ], description: "Amöneburg" },
+                { coords: [50.0036, 8.2739], description: "Mainz / Brückenplatz" }, 
+                { coords: [50.00205, 8.26602], description: "Neubrunnenplatz"} 
+
+                
+            ],
+            lines: [
+                { coords: [[50.01243, 8.24884], [50.01655, 8.25289], [50.00923, 8.26824], [50.005211, 8.266412], [49.99934, 8.27222], [49.99390, 8.27981], [49.99064, 8.28941], [49.98826, 8.29512]], color: 'red', description: 'Linie 1/2' },
+                { coords: [[50.001297, 8.25865], [49.99934, 8.27222], [49.99944, 8.27678], [50.0053, 8.2735], [50.00923, 8.26824], [50.0035, 8.2623], [50.001297, 8.25865]], color: 'blue', description: 'Linie 3' },
+                { coords: [[50.0082, 8.2803], [50.0053, 8.2735], [50.00923, 8.26824], [50.0035, 8.2623], [50.001297, 8.25865], [49.99934, 8.27222], [49.99944, 8.27678], [50.0053, 8.2735], [50.0082, 8.2803]], color: 'blue', description: 'Linie 4/Rundbahn Kastel' }, 
+                { coords: [[50.0218, 8.2286], [50.01243, 8.24884], [50.00656, 8.25500], [50.00205,8.26602]], color: 'green', description:'Linie 7' },
+                { coords: [[50.0471,8.1951], [50.0444,8.2491], [50.0340,8.2607 ], [50.0082, 8.2803], [50.0053, 8.2735], [50.0036, 8.2739]], color: 'yellow', description:'Linie 9' }
+
+            ]
+        }
+
+        var data1906 = {
+            markers: [
+                { coords: [50.01243, 8.24884], description: "Bismarckplatz"},
+                { coords: [50.01655, 8.25289], description: "Straßenbahnamt" },
+                { coords: [50.00923, 8.26824], description: "Kaisertor" },
+                { coords: [50.005211, 8.266412], description: "Bauhofstrasse" },
+                { coords: [49.99934, 8.27222], description: "Höfchen" },
+                { coords: [49.99390, 8.27981], description: "Neutor" },
+                { coords: [49.99064, 8.28941], description: "Stadtpark" },
+                { coords: [49.98826, 8.29512], description: "Weisenau" },
+                { coords: [50.001297, 8.25865], description: "Hauptbahnhof" },
+                { coords: [50.0053, 8.2735], description: "Brückenkopf" },
+                { coords: [50.0082,8.2803], description: "Kastel" }, 
+                { coords: [50.0471,8.1951], description: "Schierstein"},
+                { coords: [50.0218, 8.2286], description: "Mombach" },
+                { coords: [50.00656, 8.25500], description: "Boppstrasse" }, 
+                { coords: [50.0444,8.2491], description: "Biebrich" },
+                { coords: [50.0036, 8.2739], description: "Mainz / Brückenplatz" },
+                { coords: [50.0291,8.2369], description: "Ingelheimer Aue"}, 
+                { coords: [50.00205, 8.26602], description: "Neubrunnenplatz"}, 
+                { coords: [50.0966,8.2201], description: "Wiesbaden/Unter den Eichen"} 
+                
+            ],
+            lines: [
+            { coords: [[50.01243, 8.24884], [50.01655, 8.25289], [50.0186,8.2543], [50.0291,8.2369], [50.0186, 8.2543],[50.01655, 8.25289],[50.00923, 8.26824], [50.005211, 8.266412], [49.99934, 8.27222], [49.99390, 8.27981], [49.99064, 8.28941], [49.98826, 8.29512]], color: 'red', description: 'Linie 1/2' },
+            { coords: [[50.001297, 8.25865], [49.99934, 8.27222], [49.99944, 8.27678], [50.0053, 8.2735], [50.00923, 8.26824], [50.0035, 8.2623], [50.001297, 8.25865]], color: 'blue', description: 'Linie 3' },
+            { coords: [[50.0035, 8.2623], [50.001297, 8.25865], [49.99934, 8.27222], [49.99944, 8.27678], [50.0053, 8.2735], [50.0082, 8.2803]], color: 'blue', description: 'Linie 4' },
+            { coords: [[50.0218, 8.2286], [50.01243, 8.24884], [50.00656, 8.25500], [50.00205,8.26602]], color: 'green', description:'Linie 7' },
+            { coords: [[50.0966, 8.2201], [50.0444,8.2491], [50.0082,8.2803],[50.0053,8.2735],[50.0036,8.2739]], color: 'white', description:'Linie 6'},
+            { coords: [[50.0471,8.1951], [50.0444,8.2491]], color: 'yellow', description: "Linie 9"} 
+
+            ]
+        }
+
+        var data1907 = {
+            markers: [
+            { coords: [50.01243, 8.24884], description: "Bismarckplatz"},
+                { coords: [50.01655, 8.25289], description: "Straßenbahnamt" },
+                { coords: [50.00923, 8.26824], description: "Kaisertor" },
+                { coords: [50.005211, 8.266412], description: "Bauhofstrasse" },
+                { coords: [49.99934, 8.27222], description: "Höfchen" },
+                { coords: [49.99390, 8.27981], description: "Neutor" },
+                { coords: [49.99064, 8.28941], description: "Stadtpark" },
+                { coords: [49.98826, 8.29512], description: "Weisenau" },
+                { coords: [50.001297, 8.25865], description: "Hauptbahnhof" },
+                { coords: [50.0053, 8.2735], description: "Brückenkopf" },
+                { coords: [50.0082,8.2803], description: "Kastel" }, 
+                { coords: [50.0471,8.1951], description: "Schierstein"},
+                { coords: [50.0218, 8.2286], description: "Mombach" },
+                { coords: [50.00656, 8.25500], description: "Boppstrasse" }, 
+                { coords: [50.0444,8.2491], description: "Biebrich" },
+                { coords: [50.0036, 8.2739], description: "Mainz / Brückenplatz" },
+                { coords: [50.0291,8.2369], description: "Ingelheimer Aue"}, 
+                { coords: [50.00205, 8.26602], description: "Neubrunnenplatz"}, 
+                { coords: [50.08575,8.24425], description: "Wiesbaden Wilhelmstraße/Kurhaus"}, 
+                { coords: [50.00152, 8.20414], description: "Gonsenheim Kapellenstraße"}, 
+                { coords: [50.0013, 8.3081], description: "Kostheim"}
+            ],
+            lines: [
+                { coords: [[50.01243, 8.24884], [50.01655, 8.25289], [50.0186,8.2543], [50.0291,8.2369], [50.0186, 8.2543],[50.01655, 8.25289],[50.00923, 8.26824], [50.005211, 8.266412], [49.99934, 8.27222], [49.99390, 8.27981], [49.99064, 8.28941], [49.98826, 8.29512]], color: 'red', description: 'Linie 1/2' },
+                { coords: [[50.001297, 8.25865], [50.01243, 8.24884], [50.00152, 8.20414]], color: 'yellow', description: 'Linie 5'},
+                { coords: [[50.001297, 8.25865], [49.99934, 8.27222], [49.99944, 8.27678], [50.0053, 8.2735], [50.00923, 8.26824], [50.0035, 8.2623], [50.001297, 8.25865]], color: 'blue', description: 'Linie 3' },
+                { coords: [[50.0013, 8.3081], [50.0082, 8.2803], [50.0053, 8.2735], [49.99944,8.27678], [49.99934, 8.27222], [50.001297, 8.25865], [50.0035,8.2623],[50.00923, 8.26824], [50.0053, 8.2735], [50.0082, 8.2803], [50.0013, 8.3081]], color: 'blue', description: "Linie 4"},
+                { coords: [[50.08575, 8.24425], [50.0444,8.2491], [50.0082,8.2803],[50.0053,8.2735],[50.0036,8.2739]], color: 'white', description:'Linie 6'},
+                { coords: [[50.0218, 8.2286], [50.01243, 8.24884], [50.00656, 8.25500], [50.00205,8.26602]], color: 'green', description:'Linie 7' },
+                { coords: [[50.0471,8.1951], [50.0444,8.2491]], color: 'yellow', description: "Linie 9"}
+            ]
+        }
+
+        var data1908 = {
+            markers: [
+            { coords: [50.01243, 8.24884], description: "Bismarckplatz"},
+                { coords: [50.01655, 8.25289], description: "Straßenbahnamt" },
+                { coords: [50.00923, 8.26824], description: "Kaisertor" },
+                { coords: [50.005211, 8.266412], description: "Bauhofstrasse" },
+                { coords: [49.99934, 8.27222], description: "Höfchen" },
+                { coords: [49.99390, 8.27981], description: "Neutor" },
+                { coords: [49.99064, 8.28941], description: "Stadtpark" },
+                { coords: [49.98826, 8.29512], description: "Weisenau" },
+                { coords: [50.001297, 8.25865], description: "Hauptbahnhof" },
+                { coords: [50.0053, 8.2735], description: "Brückenkopf" },
+                { coords: [50.0082,8.2803], description: "Kastel" }, 
+                { coords: [50.0471,8.1951], description: "Schierstein"},
+                { coords: [50.0218, 8.2286], description: "Mombach" },
+                { coords: [50.00656, 8.25500], description: "Boppstrasse" }, 
+                { coords: [50.0444,8.2491], description: "Biebrich" },
+                { coords: [50.0036, 8.2739], description: "Mainz / Brückenplatz" },
+                { coords: [50.0291,8.2369], description: "Ingelheimer Aue"}, 
+                { coords: [50.00205, 8.26602], description: "Neubrunnenplatz"}, 
+                { coords: [50.08575,8.24425], description: "Wiesbaden Wilhelmstraße/Kurhaus"}, 
+                { coords: [50.00152, 8.20414], description: "Gonsenheim Kapellenstraße"}, 
+                { coords: [50.00292,8.19580], description: "Gonsenheim Lennebergplatz"},
+                { coords: [50.0013, 8.3081], description: "Kostheim"}
+            ],
+            lines: [
+                { coords: [[50.01243, 8.24884], [50.01655, 8.25289], [50.0186,8.2543], [50.0291,8.2369], [50.0186, 8.2543],[50.01655, 8.25289],[50.00923, 8.26824], [50.005211, 8.266412], [49.99934, 8.27222], [49.99390, 8.27981], [49.99064, 8.28941], [49.98826, 8.29512]], color: 'red', description: 'Linie 1/2' },
+                { coords: [[50.001297, 8.25865], [50.01243, 8.24884], [50.00152, 8.20414], [50.00292,8.19580]], color: 'yellow', description: 'Linie 5'},
+                { coords: [[50.001297, 8.25865], [49.99934, 8.27222], [49.99944, 8.27678], [50.0053, 8.2735], [50.00923, 8.26824], [50.0035, 8.2623], [50.001297, 8.25865]], color: 'blue', description: 'Linie 3' },
+                { coords: [[50.0013, 8.3081], [50.0082, 8.2803], [50.0053, 8.2735], [49.99944,8.27678], [49.99934, 8.27222], [50.001297, 8.25865], [50.0035,8.2623],[50.00923, 8.26824], [50.0053, 8.2735], [50.0082, 8.2803], [50.0013, 8.3081]], color: 'blue', description: "Linie 4"},
+                { coords: [[50.08575, 8.24425], [50.0444,8.2491], [50.0082,8.2803],[50.0053,8.2735],[50.0036,8.2739]], color: 'white', description:'Linie 6'},
+                { coords: [[50.0218, 8.2286], [50.01243, 8.24884], [50.00656, 8.25500], [50.00205,8.26602]], color: 'green', description:'Linie 7' },
+                { coords: [[50.0471,8.1951], [50.0444,8.2491]], color: 'yellow', description: "Linie 9"}
+            ]
+        }
+
+        var data1909 = {
+            markers: [
+            { coords: [50.01243, 8.24884], description: "Bismarckplatz"},
+                { coords: [50.01655, 8.25289], description: "Straßenbahnamt" },
+                { coords: [50.00923, 8.26824], description: "Kaisertor" },
+                { coords: [50.005211, 8.266412], description: "Bauhofstrasse" },
+                { coords: [49.99934, 8.27222], description: "Höfchen" },
+                { coords: [49.99390, 8.27981], description: "Neutor" },
+                { coords: [49.99064, 8.28941], description: "Stadtpark" },
+                { coords: [49.98826, 8.29512], description: "Weisenau" },
+                { coords: [50.001297, 8.25865], description: "Hauptbahnhof" },
+                { coords: [50.0053, 8.2735], description: "Brückenkopf" },
+                { coords: [50.0082,8.2803], description: "Kastel" }, 
+                { coords: [50.0471,8.1951], description: "Schierstein"},
+                { coords: [50.0218, 8.2286], description: "Mombach" },
+                { coords: [50.00656, 8.25500], description: "Boppstrasse" }, 
+                { coords: [50.0444,8.2491], description: "Biebrich" },
+                { coords: [50.0036, 8.2739], description: "Mainz / Brückenplatz" },
+                { coords: [50.0291,8.2369], description: "Ingelheimer Aue"}, 
+                { coords: [50.00205, 8.26602], description: "Neubrunnenplatz"}, 
+                { coords: [50.08575,8.24425], description: "Wiesbaden Wilhelmstraße/Kurhaus"}, 
+                { coords: [50.00152, 8.20414], description: "Gonsenheim Kapellenstraße"}, 
+                { coords: [50.00292,8.19580], description: "Gonsenheim Lennebergplatz"},
+                { coords: [50.0013, 8.3081], description: "Kostheim"}
+            ],
+            lines: [
+                { coords: [[50.01243, 8.24884], [50.01655, 8.25289], [50.0186,8.2543], [50.0291,8.2369], [50.0186, 8.2543],[50.01655, 8.25289],[50.00923, 8.26824], [50.005211, 8.266412], [49.99934, 8.27222], [49.99390, 8.27981], [49.99064, 8.28941], [49.98826, 8.29512]], color: 'red', description: 'Linie 1/2' },
+                { coords: [[50.001297, 8.25865], [50.01243, 8.24884], [50.00152, 8.20414], [50.00292,8.19580]], color: 'yellow', description: 'Linie 5'},
+                { coords: [[50.001297, 8.25865], [49.99934, 8.27222], [49.99944, 8.27678], [50.0053, 8.2735], [50.00923, 8.26824], [50.0035, 8.2623], [50.001297, 8.25865]], color: 'blue', description: 'Linie 3' },
+                { coords: [[50.0013, 8.3081], [50.0082, 8.2803], [50.0053, 8.2735], [49.99944,8.27678], [49.99934, 8.27222], [50.001297, 8.25865], [50.0035,8.2623],[50.00923, 8.26824], [50.0053, 8.2735], [50.0082, 8.2803], [50.0013, 8.3081]], color: 'blue', description: "Linie 4"},
+                { coords: [[50.08575, 8.24425], [50.0444,8.2491], [50.0082,8.2803],[50.0053,8.2735],[50.0036,8.2739]], color: 'white', description:'Linie 6'},
+                { coords: [[50.0218, 8.2286], [50.01243, 8.24884], [50.00656, 8.25500], [50.00205,8.26602]], color: 'green', description:'Linie 7' },
+                { coords: [[50.0471,8.1951], [50.0444,8.2491]], color: 'yellow', description: "Linie 9"}
+            ]
+        }
+
+        var data1911 = {
+            markers: [
+            { coords: [50.01243, 8.24884], description: "Bismarckplatz"},
+                { coords: [50.01655, 8.25289], description: "Straßenbahnamt" },
+                { coords: [50.00923, 8.26824], description: "Kaisertor" },
+                { coords: [50.005211, 8.266412], description: "Bauhofstrasse" },
+                { coords: [49.99934, 8.27222], description: "Höfchen" },
+                { coords: [49.99390, 8.27981], description: "Neutor" },
+                { coords: [49.99064, 8.28941], description: "Stadtpark" },
+                { coords: [49.98826, 8.29512], description: "Weisenau" },
+                { coords: [50.001297, 8.25865], description: "Hauptbahnhof" },
+                { coords: [50.0053, 8.2735], description: "Brückenkopf" },
+                { coords: [50.0082,8.2803], description: "Kastel" }, 
+                { coords: [50.0471,8.1951], description: "Schierstein"},
+                { coords: [50.0218, 8.2286], description: "Mombach" },
+                { coords: [50.00656, 8.25500], description: "Boppstrasse" }, 
+                { coords: [50.0444,8.2491], description: "Biebrich" },
+                { coords: [50.0036, 8.2739], description: "Mainz / Brückenplatz" },
+                { coords: [50.0291,8.2369], description: "Ingelheimer Aue"}, 
+                { coords: [50.00205, 8.26602], description: "Neubrunnenplatz"}, 
+                { coords: [50.07157,8.24279], description: "Wiesbaden Hauptbahnhof"}, 
+                { coords: [50.00152, 8.20414], description: "Gonsenheim Kapellenstraße"}, 
+                { coords: [50.00292,8.19580], description: "Gonsenheim Lennebergplatz"},
+                { coords: [50.0013, 8.3081], description: "Kostheim"}
+            ],
+            lines: [
+                { coords: [[50.01243, 8.24884], [50.01655, 8.25289], [50.0186,8.2543], [50.0291,8.2369], [50.0186, 8.2543],[50.01655, 8.25289],[50.00923, 8.26824], [50.005211, 8.266412], [49.99934, 8.27222], [49.99390, 8.27981], [49.99064, 8.28941], [49.98826, 8.29512]], color: 'red', description: 'Linie 1/2' },
+                { coords: [[50.001297, 8.25865], [50.01243, 8.24884], [50.00152, 8.20414], [50.00292,8.19580]], color: 'yellow', description: 'Linie 5'},
+                { coords: [[50.001297, 8.25865], [49.99934, 8.27222], [49.99944, 8.27678], [50.0053, 8.2735], [50.00923, 8.26824], [50.0035, 8.2623], [50.001297, 8.25865]], color: 'blue', description: 'Linie 3' },
+                { coords: [[50.0013, 8.3081], [50.0082, 8.2803], [50.0053, 8.2735], [49.99944,8.27678], [49.99934, 8.27222], [50.001297, 8.25865], [50.0035,8.2623],[50.00923, 8.26824], [50.0053, 8.2735], [50.0082, 8.2803], [50.0013, 8.3081]], color: 'blue', description: "Linie 4"},
+                { coords: [[50.07157,8.24279], [50.0444,8.2491], [50.0082,8.2803],[50.0053,8.2735],[50.0036,8.2739]], color: 'white', description:'Linie 6'},
+                { coords: [[50.0218, 8.2286], [50.01243, 8.24884], [50.00656, 8.25500], [50.00205,8.26602]], color: 'green', description:'Linie 7' },
+                { coords: [[50.0471,8.1951], [50.0444,8.2491]], color: 'yellow', description: "Linie 9"}
+            ]
+        }
+
+        var data2022 = {
+            markers: [
+                { coords: [50.001297, 8.25865], description: "Hauptbahnhof" }, 
+                { coords: [50.001297, 8.28], description: "Marker 2 (2022)" }
+            ],
+            lines: [
+                { coords: [[50.001297, 8.28], [50.003, 8.28]] }
+            ]
+        };
+
+        var data2023 = {
+            markers: [
+                { coords: [50.001297, 8.3], description: "Marker 3 (2023)" }
+            ],
+            lines: [
+                { coords: [[50.001297, 8.3], [50.003, 8.3]] }
+            ]
+        };
+
+        var allData = {
+            1904: data1904,
+            1905: data1905,
+            1906: data1906,
+            1907: data1907, 
+            1908: data1908,
+            1909: data1909, 
+            1910: data1909, 
+            1911: data1911,
+            2022: data2022,
+            2023: data2023
+        };
+
+        // Initialize the time slider
+        var slider = document.getElementById('time-slider');
+        noUiSlider.create(slider, {
+            start: [1904],
+            range: {
+                'min': 1904,
+                'max': 2023
+            },
+            step: 1,
+            tooltips: true,
+            format: {
+                to: value => value.toFixed(0),
+                from: value => Number(value)
+            }
+        });
+
+        // Store current markers and lines to remove them when year changes
+        var currentMarkers = [];
+        var currentLines = [];
+
+        function updateMap(year) {
+            // Remove current markers and lines
+            currentMarkers.forEach(marker => map.removeLayer(marker));
+            currentLines.forEach(line => map.removeLayer(line));
+
+            // Clear arrays
+            currentMarkers = [];
+            currentLines = [];
+
+            // Add new markers and lines for the selected year
+            var yearData = allData[year];
+            yearData.markers.forEach(item => {
+                var marker = L.marker(item.coords, {icon: tramIcon}).bindPopup(item.description);
+                marker.addTo(map);
+                currentMarkers.push(marker);
+            });
+            yearData.lines.forEach(item => {
+                var line = L.polyline(item.coords, { color: item.color }).bindPopup(item.description);
+                line.addTo(map);
+                currentLines.push(line);
+            });
+        }
+
+        // Update map based on slider value
+        slider.noUiSlider.on('update', function (values, handle) {
+            var selectedYear = Number(values[handle]);
+            console.log("Selected year:", selectedYear); // Debugging: check the selected year
+            updateMap(selectedYear);
+        });
+
+        // Initialize map with the first year's data
+        updateMap(1904);
+    </script>
+</body>
+</html>
